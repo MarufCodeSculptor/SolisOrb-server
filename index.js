@@ -57,6 +57,22 @@ async function run() {
         console.log(err);
       }
     });
+    // posting jobs =>
+    app.post('/jobs', async (req, res) => {
+      try {
+        const data = req.body;
+        if (!data) {
+          res.status(400).send('Bad requrest data is  not sended');
+        }
+        if (data) {
+          const result = await jobCollections.insertOne(data);
+          console.log('data posted');
+          res.send(result);
+        }
+      } catch (err) {
+        console.log(err?.message);
+      }
+    });
     // getting all bids =>
     app.get('/bids', async (req, res) => {
       try {
