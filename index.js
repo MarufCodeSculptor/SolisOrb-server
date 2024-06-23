@@ -38,8 +38,8 @@ async function run() {
       const result = await jobCollections.find().toArray();
       res.send(result);
     });
-    // getting a single item =>
-    app.get('/jobs/:id', async (req, res) => {
+    // getting a single job data =>
+    app.get('/job/:id', async (req, res) => {
       try {
         const id = req.params.id;
         if (!ObjectId.isValid(id)) {
@@ -57,6 +57,20 @@ async function run() {
         console.log(err);
       }
     });
+    // getting jobs data by email =>
+    app.get('/jobs/:email', async (req, res) => {
+      try {
+        const email = req.params.email;
+        console.log('the email is ', email);
+        const query = { 'buyer.email': email };
+        const result = await jobCollections.find(query).toArray();
+        res.send(result);
+        console.log(result);
+      } catch (err) {
+        console.log(err);
+      }
+    });
+
     // posting jobs =>
     app.post('/jobs', async (req, res) => {
       try {
@@ -72,6 +86,13 @@ async function run() {
       } catch (err) {
         console.log(err?.message);
       }
+    });
+    // removing jobs =>
+    app.delete('/job/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await jobCollections.deleteOne(query);
+      res.send(result);
     });
     // getting all bids =>
     app.get('/bids', async (req, res) => {
