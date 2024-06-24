@@ -3,7 +3,7 @@ const app = express();
 const cors = require('cors');
 require('dotenv').config();
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 9000;
 const corsOptions = {
   origin: ['http://localhost:5173'],
   credentials: true,
@@ -87,6 +87,16 @@ async function run() {
         console.log(err?.message);
       }
     });
+    // updating jobs=>
+    app.put('/job/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const recievedData = req.body;
+      const updateDoc = { $set: { ...recievedData } };
+      const options = { upsert: true };
+      const result = await jobCollections.updateOne(query, updateDoc, options);
+      res.send(result);
+    });
     // removing jobs =>
     app.delete('/job/:id', async (req, res) => {
       const id = req.params.id;
@@ -103,6 +113,23 @@ async function run() {
         console.log(err?.message);
       }
     });
+
+    // getting users bids by  their emails = >
+    app.get('/my-bids/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await bidCollections.find(query).toArray();
+      res.send(result);
+    });
+    app.get('/bid-request/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { 'buyer.email': email };
+      const result = await bidCollections.find(query).toArray();
+      res.send(result);
+      console.log(result);
+    });
+
+    // adding bids =>
     app.post('/bids', async (req, res) => {
       try {
         const data = req.body;
@@ -116,13 +143,14 @@ async function run() {
         console.log(err?.message);
       }
     });
+
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
     console.log(
       'Pinged your deployment. You successfully connected to MongoDB!'
     );
   } finally {
-    console.log('coming from finally');
+    //
   }
 }
 run().catch(console.dir);
