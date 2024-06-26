@@ -1,7 +1,10 @@
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const app = express();
 const cors = require('cors');
 require('dotenv').config();
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 
 const PORT = process.env.PORT || 9000;
 const corsOptions = {
@@ -12,12 +15,39 @@ const corsOptions = {
 // midlewere--------
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(cookieParser());
 
-app.get('/', async (req, res) => {
+// midlewere functions =>
+const logger = async (req, res, next) => {
+  const loggerInfo =
+    req.method +
+    '  => ' +
+    req.protocol +
+    '://' +
+    req.get('host') +
+    req.originalUrl;
+  console.log(loggerInfo);
+  next();
+};
+const verifyToken = async (req, res, next) => {
+  const token = await req.cookies?.token;
+  console.log(token);
+  if (!token) {
+    return res.status(400).send('token not found in server');
+  }
+  jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send('forbidden! access not permited');
+    }
+    req.user = decoded;
+    next();
+  });
+};
+
+app.get('/', logger, async (req, res) => {
   res.send('access to root outsie of the mongodb');
 });
 
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_NAME}:${process.env.DB_PASS}@cluster1.6mzg5rv.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -33,8 +63,31 @@ async function run() {
   try {
     const jobCollections = client.db('SolisOrbBase').collection('jobs');
     const bidCollections = client.db('SolisOrbBase').collection('bids');
+    app.post('/user', logger, async (req, res) => {
+      const data = req.body;
+      const secret = process.env.TOKEN_SECRET;
+      const token = await jwt.sign(data, secret, { expiresIn: '1d' });
+      res
+        .cookie('token', token, {
+          httpOnly: true,
+        })
+        .send({ success: true });
+    });
+
+    app.get('/logout', (req, res) => {
+      console.log('logout route called');
+      res
+        .clearCookie('token', {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+        })
+        .send({ data: 'cookie clear' });
+    });
+
     // getting all jobs data =>
-    app.get('/jobs', async (req, res) => {
+    app.get('/jobs', logger, async (req, res) => {
+      console.log(req.user);
       const result = await jobCollections.find().toArray();
       res.send(result);
     });
@@ -50,25 +103,21 @@ async function run() {
         if (!result) {
           res.status(404).send('data not found');
         }
-
-        console.log(result);
         res.send(result);
       } catch (err) {
         console.log(err);
       }
     });
+
     // getting jobs data by email =>
-    app.get('/jobs/:email', async (req, res) => {
-      try {
-        const email = req.params.email;
-        console.log('the email is ', email);
-        const query = { 'buyer.email': email };
-        const result = await jobCollections.find(query).toArray();
-        res.send(result);
-        console.log(result);
-      } catch (err) {
-        console.log(err);
-      }
+    app.get('/jobs/:email', logger, verifyToken, async (req, res) => {
+      const email = req.params.email;
+      // if (req.user.email !== email) {
+      //   return res.status(403).send({ message: 'forbidden access' });
+      // }
+      const query = { 'buyer.email': email };
+      const result = await jobCollections.find(query).toArray();
+      res.send(result);
     });
 
     // posting jobs =>
@@ -80,7 +129,7 @@ async function run() {
         }
         if (data) {
           const result = await jobCollections.insertOne(data);
-          console.log('data posted');
+
           res.send(result);
         }
       } catch (err) {
@@ -115,12 +164,17 @@ async function run() {
     });
 
     // getting users bids by  their emails = >
-    app.get('/my-bids/:email', async (req, res) => {
+    app.get('/my-bids/:email', logger, verifyToken, async (req, res) => {
       const email = req.params.email;
+      if (email !== req.user.email) {
+        return res.status(403).send({ message: 'forbidden access' });
+      }
       const query = { email: email };
       const result = await bidCollections.find(query).toArray();
       res.send(result);
     });
+
+    // getting buyers data bid request
     app.get('/bid-request/:email', async (req, res) => {
       const email = req.params.email;
       const query = { 'buyer.email': email };
@@ -129,6 +183,29 @@ async function run() {
       console.log(result);
     });
 
+    // updating bids data froms buyer  =>
+    app.patch('/bid-buyer/:id', async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const updateDoc = { $set: data };
+      const query = { _id: new ObjectId(id) };
+      const result = await bidCollections.updateOne(query, updateDoc);
+      res.send(result);
+    });
+    // updating bids data from seller =>
+
+    app.patch('/bid-seller/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const data = req.body;
+      const updateDoc = {
+        $set: {
+          ...data,
+        },
+      };
+      const result = await bidCollections.updateOne(query, updateDoc);
+      res.send(result);
+    });
     // adding bids =>
     app.post('/bids', async (req, res) => {
       try {
@@ -137,7 +214,7 @@ async function run() {
           res.status(400).send('bad request data is not sended');
         }
         const result = await bidCollections.insertOne(data);
-        console.log('insert to bid collections success');
+
         res.send(result);
       } catch (err) {
         console.log(err?.message);
