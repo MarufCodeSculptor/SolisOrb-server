@@ -91,7 +91,7 @@ async function run() {
       res.send(result);
     });
     // getting jobs count = >
-    app.get('/jobs-count', async (req, res) => {
+    app.get('/jobs-count',logger, async (req, res) => {
       const count = await jobCollections.countDocuments();
       console.log(count);
       res.send({ count: count });
