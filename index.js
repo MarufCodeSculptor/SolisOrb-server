@@ -90,6 +90,12 @@ async function run() {
       const result = await jobCollections.find().toArray();
       res.send(result);
     });
+    // getting jobs count = >
+    app.get('/jobs-count', async (req, res) => {
+      const count = await jobCollections.countDocuments();
+      console.log(count);
+      res.send({ count: count });
+    });
     // getting a single job data =>
     app.get('/job/:id', async (req, res) => {
       try {
