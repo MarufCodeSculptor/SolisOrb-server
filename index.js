@@ -31,7 +31,7 @@ const logger = async (req, res, next) => {
 };
 const verifyToken = async (req, res, next) => {
   const token = await req.cookies?.token;
-  console.log(token);
+  console.log('this is token form varify token route', token);
   if (!token) {
     return res.status(400).send('token not found in server');
   }
@@ -87,7 +87,6 @@ async function run() {
 
     // getting all jobs data =>
     app.get('/jobs', logger, async (req, res) => {
-      console.log(req.user);
       const result = await jobCollections.find().toArray();
       res.send(result);
     });
@@ -129,7 +128,6 @@ async function run() {
         }
         if (data) {
           const result = await jobCollections.insertOne(data);
-
           res.send(result);
         }
       } catch (err) {
@@ -159,7 +157,8 @@ async function run() {
         const result = await bidCollections.find().toArray();
         res.send(result);
       } catch (err) {
-        console.log(err?.message);
+        res.status(400).send(err.message);
+        console.log(err);
       }
     });
 
@@ -208,16 +207,28 @@ async function run() {
     });
     // adding bids =>
     app.post('/bids', async (req, res) => {
+      const data = req.body;
+
+      const bidExists = await bidCollections.findOne({
+        jobId: data.jobId,
+        email: data.email,
+      });
+
+      if (bidExists) {
+        return res
+          .status(400)
+          .send('You have already placed a bid on this job');
+      }
+
       try {
-        const data = req.body;
         if (!data) {
-          res.status(400).send('bad request data is not sended');
+          res.status(400).send({ data: { message: 'Data not found' } });
         }
         const result = await bidCollections.insertOne(data);
-
         res.send(result);
       } catch (err) {
         console.log(err?.message);
+        res.send(err);
       }
     });
 
