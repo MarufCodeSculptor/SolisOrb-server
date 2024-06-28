@@ -98,35 +98,39 @@ async function run() {
       const skip = page * size;
       const sort = req.query.sort;
       const search = req.query.search;
-
       let query = {
         job_title: {
           $regex: search,
           $options: 'i',
         },
       };
-
       if (filter) query.category = filter;
       let options = {};
       if (sort) options = { sort: { deadline: sort === 'asc' ? 1 : -1 } };
-
       const result = await jobCollections
         .find(query, options)
         .skip(skip)
         .limit(size)
         .toArray();
       const lengthIs = result.length;
-
       res.send(result);
     });
     // getting jobs count = >
     app.get('/jobs-count', logger, async (req, res) => {
       const filterIs = req.query.filter;
-      let query = {};
-      if (filterIs) query = { category: filterIs };
+      const search = req.query.search;
+
+      let query = {
+        // job_title: {
+        //   $regex: search,
+        //   $options: 'i',
+        // },
+      };
+      if (filterIs) query.category = filterIs 
       const count = await jobCollections.countDocuments(query);
       res.send({ count: count });
     });
+
     // getting a single job data =>
     app.get('/job/:id', async (req, res) => {
       try {
