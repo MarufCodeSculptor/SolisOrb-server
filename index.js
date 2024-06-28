@@ -90,8 +90,21 @@ async function run() {
       const result = await jobCollections.find().toArray();
       res.send(result);
     });
+    // getting alll jogbs by qyery => => =>
+    app.get('/all-jobs', logger, async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page);
+      const skip = (page - 1) * size;
+
+      const result = await jobCollections
+        .find()
+        .skip(skip)
+        .limit(size)
+        .toArray();
+      res.send(result);
+    });
     // getting jobs count = >
-    app.get('/jobs-count',logger, async (req, res) => {
+    app.get('/jobs-count', logger, async (req, res) => {
       const count = await jobCollections.countDocuments();
       console.log(count);
       res.send({ count: count });
