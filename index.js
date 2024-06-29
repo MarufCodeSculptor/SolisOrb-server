@@ -8,9 +8,9 @@ const cookieParser = require('cookie-parser');
 
 const PORT = process.env.PORT || 9000;
 const corsOptions = {
-  origin: ['http://localhost:5173'],
+  origin: ['http://localhost:5173', 'https://solisorb.web.app'],
   credentials: true,
-  opstionSuccessStatus: 200,
+  optionSuccessStatus: 200,
 };
 // midlewere--------
 app.use(cors(corsOptions));
@@ -29,6 +29,7 @@ const logger = async (req, res, next) => {
   console.log(loggerInfo);
   next();
 };
+
 const verifyToken = async (req, res, next) => {
   const token = await req.cookies?.token;
   console.log('this is token form varify token route', token);
@@ -126,7 +127,7 @@ async function run() {
         //   $options: 'i',
         // },
       };
-      if (filterIs) query.category = filterIs 
+      if (filterIs) query.category = filterIs;
       const count = await jobCollections.countDocuments(query);
       res.send({ count: count });
     });
